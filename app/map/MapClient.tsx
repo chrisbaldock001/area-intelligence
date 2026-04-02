@@ -163,6 +163,47 @@ export default function MapPage() {
                 isDragging.current = false
                 map.current!.dragPan.enable()
             })
+
+            // Touch support for mobile
+            handleEl.addEventListener('touchstart', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                isDragging.current = true
+                map.current!.dragPan.disable()
+            }, { passive: false })
+
+            map.current.getCanvas().addEventListener('touchmove', (e) => {
+                if (!isDragging.current || !radiusCentreRef.current) return
+                e.preventDefault()
+                const touch = e.touches[0]
+                const rect = map.current!.getCanvas().getBoundingClientRect()
+                const point = new mapboxgl.Point(
+                    touch.clientX - rect.left,
+                    touch.clientY - rect.top
+                )
+                const lngLat = map.current!.unproject(point)
+                const c = new mapboxgl.LngLat(radiusCentreRef.current[0], radiusCentreRef.current[1])
+                const newRadius = c.distanceTo(lngLat) / 1000
+                radiusKmRef.current = newRadius
+                setRadiusKm(newRadius)
+                showRadiusLabelBriefly()
+                const updated = createGeoJSONCircle(radiusCentreRef.current, newRadius)
+                const source = map.current!.getSource('radius-circle') as mapboxgl.GeoJSONSource
+                if (source) source.setData(updated)
+                if (handleMarkerRef.current) {
+                    const north: [number, number] = [
+                        radiusCentreRef.current[0],
+                        radiusCentreRef.current[1] + newRadius / 110.574
+                    ]
+                    handleMarkerRef.current.setLngLat(north)
+                }
+            }, { passive: false })
+
+            map.current.getCanvas().addEventListener('touchend', () => {
+                isDragging.current = false
+                map.current!.dragPan.enable()
+            })
+
         }
     }
 
