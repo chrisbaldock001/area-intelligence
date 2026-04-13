@@ -294,10 +294,15 @@ export default function MapPage() {
     }, [])
 
     return (
-        <div style={{ width: '100vw', height: viewportHeight, position: 'relative' }}>
+        <div style={{
+            width: '100vw',
+            height: viewportHeight,
+            position: 'relative',
+            paddingTop: 'env(safe-area-inset-top)'
+        }}>
 
             {/* Search bar */}
-            <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10 }}>
+            <div style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top))', left: 16, zIndex: 10 }}>
                 <div style={{
                     background: 'white', borderRadius: 12, padding: '12px 16px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex',
