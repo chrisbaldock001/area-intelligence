@@ -235,51 +235,23 @@ export default function MapClient() {
                     />
                     {searchValue && (
                         <button
-                            onClick={() => setSearchValue('')}
+                            onClick={() => {
+                                setSearchValue('')
+                                setRadiusCentre(null)
+                                setAreaSummary(null)
+                                if (map.current?.getSource('radius-circle')) {
+                                    (map.current.getSource('radius-circle') as mapboxgl.GeoJSONSource).setData({
+                                        type: 'FeatureCollection',
+                                        features: []
+                                    })
+                                }
+                            }}
                             style={{
                                 background: 'none', border: 'none', cursor: 'pointer',
                                 color: '#999', fontSize: 18, padding: 0, lineHeight: 1
                             }}
                         >✕</button>
                     )}
-                </div>
-
-                {/* Radius controls */}
-                {radiusCentre && (
-                    <div style={{
-                        background: 'white', borderRadius: 12, padding: '8px 12px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex',
-                        alignItems: 'center', gap: 8, whiteSpace: 'nowrap'
-                    }}>
-                        <button onClick={() => adjustRadius(-0.1)} style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            fontSize: 20, fontWeight: 700, color: '#3B6FE0',
-                            padding: '0 4px', lineHeight: 1
-                        }}>−</button>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: '#3B6FE0' }}>Radius</span>
-                        <button onClick={() => adjustRadius(0.1)} style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            fontSize: 20, fontWeight: 700, color: '#3B6FE0',
-                            padding: '0 4px', lineHeight: 1
-                        }}>+</button>
-                    </div>
-                )}
-            </div>
-
-            {/* Radius label */}
-            <div suppressHydrationWarning style={{
-                position: 'absolute', top: 'calc(80px + env(safe-area-inset-top))', right: 16, zIndex: 10,
-                opacity: showRadiusLabel ? 1 : 0,
-                transition: 'opacity 300ms ease',
-                pointerEvents: 'none'
-            }}>
-                <div style={{
-                    background: 'white', borderRadius: 12, padding: '12px 20px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)', textAlign: 'center',
-                    border: '2px solid #3B6FE0'
-                }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#3B6FE0' }}>Search Radius:</div>
-                    <div style={{ fontSize: 28, fontWeight: 700, color: '#3B6FE0' }}>{(radiusKm * 1000).toFixed(0)}m</div>
                 </div>
             </div>
 
@@ -304,22 +276,58 @@ export default function MapClient() {
                 </div>
             )}
 
-            {/* Area summary button */}
+            {/* Bottom bar */}
             {radiusCentre && (
                 <div style={{
-                    position: 'absolute', bottom: 80, left: 16, zIndex: 10
+                    position: 'absolute', bottom: 32, left: '50%',
+                    transform: 'translateX(-50%)', zIndex: 10,
+                    display: 'flex', alignItems: 'flex-end', gap: 12
                 }}>
+                    {/* Summarise button */}
                     <button
                         onClick={handleAreaSummary}
                         style={{
-                            width: 48, height: 48, borderRadius: '50%',
                             background: 'white', border: 'none', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            padding: '12px 20px', borderRadius: 24, height: 48,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                            fontSize: 15, fontWeight: 600, color: '#3B6FE0'
                         }}
                     >
-                        <SummarizeOutlinedIcon style={{ color: '#2D2D2D' }} />
+                        <SummarizeOutlinedIcon style={{ color: '#3B6FE0', fontSize: 20 }} />
+                        Summarise
                     </button>
+
+                    {/* Radius control */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <div suppressHydrationWarning style={{
+                            background: 'white', borderRadius: 8, padding: '4px 10px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)', textAlign: 'center',
+                            border: '1.5px solid #3B6FE0',
+                            opacity: showRadiusLabel ? 1 : 0,
+                            transition: 'opacity 300ms ease',
+                            pointerEvents: 'none'
+                        }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#3B6FE0' }}>{(radiusKm * 1000).toFixed(0)}m</div>
+                        </div>
+                        <div style={{
+                            background: 'white', borderRadius: 24, padding: '12px 16px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)', display: 'flex',
+                            alignItems: 'center', gap: 8, height: 48, boxSizing: 'border-box' as const
+                        }}>
+                            <button onClick={() => adjustRadius(-0.1)} style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                fontSize: 20, fontWeight: 700, color: '#3B6FE0',
+                                padding: '0 4px', lineHeight: 1
+                            }}>−</button>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3B6FE0' }}>Radius</span>
+                            <button onClick={() => adjustRadius(0.1)} style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                fontSize: 20, fontWeight: 700, color: '#3B6FE0',
+                                padding: '0 4px', lineHeight: 1
+                            }}>+</button>
+                        </div>
+                    </div>
                 </div>
             )}
 
