@@ -63,6 +63,7 @@ export default function MapClient() {
     const [showRadiusLabel, setShowRadiusLabel] = useState(false)
     const radiusLabelTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [viewportHeight, setViewportHeight] = useState('100dvh')
+    const [searchValue, setSearchValue] = useState('')
 
     const handleSearch = async (query: string) => {
         if (!query.trim() || !map.current) return
@@ -225,21 +226,22 @@ export default function MapClient() {
                     <input
                         id="search-input"
                         placeholder="Search an address..."
+                        value={searchValue}
+                        onChange={(e) => setSearchValue(e.target.value)}
                         style={{ border: 'none', outline: 'none', fontSize: 16, width: '100%', color: '#2D2D2D' }}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSearch((e.target as HTMLInputElement).value)
+                            if (e.key === 'Enter') handleSearch(searchValue)
                         }}
                     />
-                    <button
-                        onClick={() => {
-                            const input = document.getElementById('search-input') as HTMLInputElement
-                            if (input) input.value = ''
-                        }}
-                        style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            color: '#999', fontSize: 18, padding: 0, lineHeight: 1
-                        }}
-                    >✕</button>
+                    {searchValue && (
+                        <button
+                            onClick={() => setSearchValue('')}
+                            style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: '#999', fontSize: 18, padding: 0, lineHeight: 1
+                            }}
+                        >✕</button>
+                    )}
                 </div>
 
                 {/* Radius controls */}
