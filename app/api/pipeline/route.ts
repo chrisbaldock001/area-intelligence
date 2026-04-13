@@ -7,22 +7,28 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 )
 
-export async function GET() {
+export async function GET(request: Request) {
     const browser = await chromium.launch({ headless: true })
     const page = await browser.newPage()
 
     try {
+        const url = new URL(request.url)
+        const days = parseInt(url.searchParams.get('days') ?? '7')
         const today = new Date()
-        const week = new Date(today)
-        week.setDate(today.getDate() - 7)
+        const from = new Date(today)
+        from.setDate(today.getDate() - days)
         const fmt = (d: Date) => d.toLocaleDateString('en-GB')
 
         // Step 1: Scrape applications
         await page.goto('https://applications.greatercambridgeplanning.org/online-applications/search.do?action=advanced')
-        await page.fill('input[name="date(applicationValidatedStart)"]', fmt(week))
+        await page.waitForLoadState('networkidle')
+        await page.waitForSelector('input[type="submit"][value="Search"]', { timeout: 10000 })
+        await page.fill('input[name="date(applicationValidatedStart)"]', fmt(from))
         await page.fill('input[name="date(applicationValidatedEnd)"]', fmt(today))
+        await page.waitForTimeout(500)
         await page.click('input[type="submit"][value="Search"]')
-        await page.waitForSelector('li.searchresult', { timeout: 10000 })
+        await page.waitForLoadState('networkidle')
+        await page.waitForSelector('li.searchresult', { timeout: 30000 })
 
         const applications = await page.evaluate(() => {
             return Array.from(document.querySelectorAll('li.searchresult')).map(el => {
