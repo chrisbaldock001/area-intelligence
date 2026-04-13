@@ -285,7 +285,7 @@ export default function MapPage() {
     }, [])
 
     return (
-        <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+        <div style={{ width: '100vw', height: '100dvh', position: 'relative' }}>
 
             {/* Search bar */}
             <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10 }}>
