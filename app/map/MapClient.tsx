@@ -111,8 +111,8 @@ export default function MapPage() {
         const northPoint: [number, number] = [newCentre[0], newCentre[1] + radiusKm / 110.574]
 
         const handleEl = document.createElement('div')
-        handleEl.style.width = '24px'
-        handleEl.style.height = '24px'
+        handleEl.style.width = '44px'
+        handleEl.style.height = '44px'
         handleEl.style.borderRadius = '50%'
         handleEl.style.backgroundColor = '#3B6FE0'
         handleEl.style.border = '2px solid white'
