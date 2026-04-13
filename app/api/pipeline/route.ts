@@ -7,28 +7,37 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 )
 
-export async function GET(request: Request) {
+interface ScrapedApplication {
+    ref: string
+    address: string
+    proposal: string
+    validated: string
+    status: string
+    link: string
+}
+
+async function scrapeWeek(fromDate: Date, toDate: Date): Promise<ScrapedApplication[]> {
     const browser = await chromium.launch({ headless: true })
     const page = await browser.newPage()
 
     try {
-        const url = new URL(request.url)
-        const days = parseInt(url.searchParams.get('days') ?? '7')
-        const today = new Date()
-        const from = new Date(today)
-        from.setDate(today.getDate() - days)
         const fmt = (d: Date) => d.toLocaleDateString('en-GB')
 
-        // Step 1: Scrape applications
         await page.goto('https://applications.greatercambridgeplanning.org/online-applications/search.do?action=advanced')
         await page.waitForLoadState('networkidle')
         await page.waitForSelector('input[type="submit"][value="Search"]', { timeout: 10000 })
-        await page.fill('input[name="date(applicationValidatedStart)"]', fmt(from))
-        await page.fill('input[name="date(applicationValidatedEnd)"]', fmt(today))
+        await page.fill('input[name="date(applicationValidatedStart)"]', fmt(fromDate))
+        await page.fill('input[name="date(applicationValidatedEnd)"]', fmt(toDate))
         await page.waitForTimeout(500)
         await page.click('input[type="submit"][value="Search"]')
         await page.waitForLoadState('networkidle')
-        await page.waitForSelector('li.searchresult', { timeout: 30000 })
+
+        // Check if results exist
+        const hasResults = await page.$('li.searchresult')
+        if (!hasResults) {
+            await browser.close()
+            return []
+        }
 
         const applications = await page.evaluate(() => {
             return Array.from(document.querySelectorAll('li.searchresult')).map(el => {
@@ -47,11 +56,49 @@ export async function GET(request: Request) {
             })
         })
 
-        // Step 2: Summarise and store each application
+        await browser.close()
+        return applications
+
+    } catch (err) {
+        await browser.close()
+        console.error('Scrape error:', err)
+        return []
+    }
+}
+
+export async function GET(request: Request) {
+    try {
+        const url = new URL(request.url)
+        const weeks = parseInt(url.searchParams.get('weeks') ?? '4')
+
+        const today = new Date()
+        let allApplications: ScrapedApplication[] = []
+
+        // Scrape week by week
+        for (let i = 0; i < weeks; i++) {
+            const toDate = new Date(today)
+            toDate.setDate(today.getDate() - (i * 7))
+            const fromDate = new Date(toDate)
+            fromDate.setDate(toDate.getDate() - 7)
+
+            console.log(`Scraping week ${i + 1}: ${fromDate.toLocaleDateString('en-GB')} to ${toDate.toLocaleDateString('en-GB')}`)
+
+            const weekApplications = await scrapeWeek(fromDate, toDate)
+            allApplications = allApplications.concat(weekApplications)
+        }
+
+        // Deduplicate by ref
+        const seen = new Set()
+        const unique = allApplications.filter(app => {
+            if (seen.has(app.ref)) return false
+            seen.add(app.ref)
+            return true
+        })
+
+        // Summarise and store
         const results = []
 
-        for (const app of applications) {
-            // Generate AI summary
+        for (const app of unique) {
             const response = await fetch('https://api.anthropic.com/v1/messages', {
                 method: 'POST',
                 headers: {
@@ -79,7 +126,6 @@ Status: ${app.status}`
             const data = await response.json()
             const summary = data.content?.[0]?.text ?? ''
 
-            // Store in Supabase
             const { error } = await supabase
                 .from('applications')
                 .upsert({
@@ -102,11 +148,9 @@ Status: ${app.status}`
             })
         }
 
-        await browser.close()
-        return NextResponse.json({ count: results.length, results })
+        return NextResponse.json({ weeks, scraped: allApplications.length, unique: unique.length, stored: results.length, results })
 
     } catch (err) {
-        await browser.close()
         const message = err instanceof Error ? err.message : 'Unknown error'
         return NextResponse.json({ error: message }, { status: 500 })
     }
