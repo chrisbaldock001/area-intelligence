@@ -230,7 +230,10 @@ export default function MapClient() {
                         onChange={(e) => setSearchValue(e.target.value)}
                         style={{ border: 'none', outline: 'none', fontSize: 16, width: '100%', color: '#2D2D2D' }}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSearch(searchValue)
+                            if (e.key === 'Enter') {
+                                handleSearch(searchValue)
+                                    ; (e.target as HTMLInputElement).blur()
+                            }
                         }}
                     />
                     {searchValue && (
