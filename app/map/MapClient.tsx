@@ -65,6 +65,7 @@ export default function MapPage() {
     const [areaSummaryLoading, setAreaSummaryLoading] = useState(false)
     const [showRadiusLabel, setShowRadiusLabel] = useState(false)
     const radiusLabelTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const [viewportHeight, setViewportHeight] = useState('100dvh')
 
     const handleSearch = async (query: string) => {
         if (!query.trim() || !map.current) return
@@ -238,6 +239,12 @@ export default function MapPage() {
     useEffect(() => {
         if (map.current || !mapContainer.current) return
 
+        const updateHeight = () => {
+            setViewportHeight(`${window.innerHeight}px`)
+        }
+        updateHeight()
+        window.addEventListener('resize', updateHeight)
+
         map.current = new mapboxgl.Map({
             container: mapContainer.current,
             style: 'mapbox://styles/mapbox/light-v11',
@@ -282,10 +289,12 @@ export default function MapPage() {
         }
 
         map.current.on('load', addPins)
+
+        return () => window.removeEventListener('resize', updateHeight)
     }, [])
 
     return (
-        <div style={{ width: '100vw', height: '100dvh', position: 'relative' }}>
+        <div style={{ width: '100vw', height: viewportHeight, position: 'relative' }}>
 
             {/* Search bar */}
             <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10 }}>
