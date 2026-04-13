@@ -223,12 +223,23 @@ export default function MapClient() {
                 }}>
                     <SearchIcon style={{ color: '#2D2D2D' }} />
                     <input
+                        id="search-input"
                         placeholder="Search an address..."
                         style={{ border: 'none', outline: 'none', fontSize: 16, width: '100%', color: '#2D2D2D' }}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') handleSearch((e.target as HTMLInputElement).value)
                         }}
                     />
+                    <button
+                        onClick={() => {
+                            const input = document.getElementById('search-input') as HTMLInputElement
+                            if (input) input.value = ''
+                        }}
+                        style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: '#999', fontSize: 18, padding: 0, lineHeight: 1
+                        }}
+                    >✕</button>
                 </div>
 
                 {/* Radius controls */}
