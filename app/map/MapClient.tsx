@@ -50,16 +50,13 @@ function createGeoJSONCircle(centre: [number, number], radiusKm: number, points 
     }
 }
 
-export default function MapPage() {
+export default function MapClient() {
     const mapContainer = useRef<HTMLDivElement>(null)
     const map = useRef<mapboxgl.Map | null>(null)
     const [selectedApp, setSelectedApp] = useState<Application | null>(null)
     const [radiusKm, setRadiusKm] = useState(0.5)
     const [radiusCentre, setRadiusCentre] = useState<[number, number] | null>(null)
-    const isDragging = useRef(false)
     const radiusCentreRef = useRef<[number, number] | null>(null)
-    const dragHandlersAdded = useRef(false)
-    const handleMarkerRef = useRef<mapboxgl.Marker | null>(null)
     const radiusKmRef = useRef(0.5)
     const [areaSummary, setAreaSummary] = useState<string | null>(null)
     const [areaSummaryLoading, setAreaSummaryLoading] = useState(false)
@@ -106,145 +103,17 @@ export default function MapPage() {
                 paint: { 'line-color': '#3B6FE0', 'line-width': 2 }
             })
         }
+    }
 
-        // Add drag handle marker at top of circle
-        const northPoint: [number, number] = [newCentre[0], newCentre[1] + radiusKm / 110.574]
-
-        const handleEl = document.createElement('div')
-        handleEl.style.width = '44px'
-        handleEl.style.height = '44px'
-        handleEl.style.borderRadius = '50%'
-        handleEl.style.backgroundColor = '#3B6FE0'
-        handleEl.style.border = '2px solid white'
-        handleEl.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'
-        handleEl.style.cursor = 'grab'
-
-        const handleMarker = new mapboxgl.Marker({ element: handleEl })
-            .setLngLat(northPoint)
-            .addTo(map.current!)
-
-        handleMarkerRef.current = handleMarker
-
-        handleEl.addEventListener('mousedown', (e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            isDragging.current = true
-            map.current!.dragPan.disable()
-        })
-
-        handleEl.addEventListener('touchstart', (e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            isDragging.current = true
-            map.current!.dragPan.disable()
-        }, { passive: false })
-
-        if (!dragHandlersAdded.current) {
-            dragHandlersAdded.current = true
-
-            map.current.on('mousedown', 'radius-circle-border', (e) => {
-                e.preventDefault()
-                isDragging.current = true
-                map.current!.dragPan.disable()
-            })
-
-            map.current.on('mousemove', (e) => {
-                if (!isDragging.current || !radiusCentreRef.current) return
-                const c = new mapboxgl.LngLat(radiusCentreRef.current[0], radiusCentreRef.current[1])
-                const newRadius = c.distanceTo(e.lngLat) / 1000
-                radiusKmRef.current = newRadius
-                setRadiusKm(newRadius)
-                showRadiusLabelBriefly()
-                const updated = createGeoJSONCircle(radiusCentreRef.current, newRadius)
-                const source = map.current!.getSource('radius-circle') as mapboxgl.GeoJSONSource
-                if (source) source.setData(updated)
-                if (handleMarkerRef.current) {
-                    const north: [number, number] = [
-                        radiusCentreRef.current[0],
-                        radiusCentreRef.current[1] + newRadius / 110.574
-                    ]
-                    handleMarkerRef.current.setLngLat(north)
-                }
-            })
-
-            map.current.on('mouseup', () => {
-                isDragging.current = false
-                map.current!.dragPan.enable()
-            })
-
-            map.current.getCanvas().addEventListener('touchmove', (e) => {
-                if (!isDragging.current || !radiusCentreRef.current) return
-                e.preventDefault()
-                const touch = e.touches[0]
-                const rect = map.current!.getCanvas().getBoundingClientRect()
-                const point = new mapboxgl.Point(
-                    touch.clientX - rect.left,
-                    touch.clientY - rect.top
-                )
-                const lngLat = map.current!.unproject(point)
-                const c = new mapboxgl.LngLat(radiusCentreRef.current[0], radiusCentreRef.current[1])
-                const newRadius = c.distanceTo(lngLat) / 1000
-                radiusKmRef.current = newRadius
-                setRadiusKm(newRadius)
-                showRadiusLabelBriefly()
-                const updated = createGeoJSONCircle(radiusCentreRef.current, newRadius)
-                const source = map.current!.getSource('radius-circle') as mapboxgl.GeoJSONSource
-                if (source) source.setData(updated)
-                if (handleMarkerRef.current) {
-                    const north: [number, number] = [
-                        radiusCentreRef.current[0],
-                        radiusCentreRef.current[1] + newRadius / 110.574
-                    ]
-                    handleMarkerRef.current.setLngLat(north)
-                }
-            }, { passive: false })
-
-            map.current.getCanvas().addEventListener('touchend', () => {
-                isDragging.current = false
-                map.current!.dragPan.enable()
-            })
-
-            // Touch support for mobile
-            handleEl.addEventListener('touchstart', (e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                isDragging.current = true
-                map.current!.dragPan.disable()
-            }, { passive: false })
-
-            map.current.getCanvas().addEventListener('touchmove', (e) => {
-                if (!isDragging.current || !radiusCentreRef.current) return
-                e.preventDefault()
-                const touch = e.touches[0]
-                const rect = map.current!.getCanvas().getBoundingClientRect()
-                const point = new mapboxgl.Point(
-                    touch.clientX - rect.left,
-                    touch.clientY - rect.top
-                )
-                const lngLat = map.current!.unproject(point)
-                const c = new mapboxgl.LngLat(radiusCentreRef.current[0], radiusCentreRef.current[1])
-                const newRadius = c.distanceTo(lngLat) / 1000
-                radiusKmRef.current = newRadius
-                setRadiusKm(newRadius)
-                showRadiusLabelBriefly()
-                const updated = createGeoJSONCircle(radiusCentreRef.current, newRadius)
-                const source = map.current!.getSource('radius-circle') as mapboxgl.GeoJSONSource
-                if (source) source.setData(updated)
-                if (handleMarkerRef.current) {
-                    const north: [number, number] = [
-                        radiusCentreRef.current[0],
-                        radiusCentreRef.current[1] + newRadius / 110.574
-                    ]
-                    handleMarkerRef.current.setLngLat(north)
-                }
-            }, { passive: false })
-
-            map.current.getCanvas().addEventListener('touchend', () => {
-                isDragging.current = false
-                map.current!.dragPan.enable()
-            })
-
-        }
+    const adjustRadius = (deltaKm: number) => {
+        if (!radiusCentreRef.current || !map.current) return
+        const newRadius = Math.max(0.1, radiusKm + deltaKm)
+        radiusKmRef.current = newRadius
+        setRadiusKm(newRadius)
+        showRadiusLabelBriefly()
+        const updated = createGeoJSONCircle(radiusCentreRef.current, newRadius)
+        const source = map.current.getSource('radius-circle') as mapboxgl.GeoJSONSource
+        if (source) source.setData(updated)
     }
 
     const handleAreaSummary = async () => {
@@ -375,6 +244,33 @@ export default function MapPage() {
                 </div>
             </div>
 
+            {/* Radius +/- buttons */}
+            {radiusCentre && (
+                <div style={{
+                    position: 'absolute', top: 'calc(80px + env(safe-area-inset-top))', right: 16, zIndex: 10,
+                    display: 'flex', flexDirection: 'column', gap: 8
+                }}>
+                    <button
+                        onClick={() => adjustRadius(0.1)}
+                        style={{
+                            width: 44, height: 44, borderRadius: '50%',
+                            background: 'white', border: 'none', cursor: 'pointer',
+                            fontSize: 24, fontWeight: 700, color: '#3B6FE0',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>+</button>
+                    <button
+                        onClick={() => adjustRadius(-0.1)}
+                        style={{
+                            width: 44, height: 44, borderRadius: '50%',
+                            background: 'white', border: 'none', cursor: 'pointer',
+                            fontSize: 24, fontWeight: 700, color: '#3B6FE0',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>−</button>
+                </div>
+            )}
+
             {/* Map */}
             <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
@@ -413,9 +309,7 @@ export default function MapPage() {
                         <SummarizeOutlinedIcon style={{ color: '#2D2D2D' }} />
                     </button>
                 </div>
-
             )}
-
 
             {/* Area summary card */}
             {(areaSummary || areaSummaryLoading) && (
