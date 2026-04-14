@@ -222,10 +222,9 @@ export default function MapClient() {
 
     // Show pins only after search
     useEffect(() => {
-        if (!map.current) return
-        const markers = document.querySelectorAll('.mapboxgl-marker')
-        markers.forEach((marker) => {
-            (marker as HTMLElement).style.display = radiusCentre ? 'block' : 'none'
+        markersRef.current.forEach(marker => {
+            const el = marker.getElement()
+            el.style.display = radiusCentre ? 'block' : 'none'
         })
     }, [radiusCentre])
 
