@@ -336,7 +336,6 @@ export default function MapClient() {
                     padding: 24, maxHeight: '50vh', overflowY: 'auto',
                     boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
                     transform: cardVisible ? 'translateY(0)' : 'translateY(100%)',
-                    transition: window.innerWidth > 768 ? 'transform 300ms ease' : 'none'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                         <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Planning Application</strong>
