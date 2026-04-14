@@ -64,6 +64,7 @@ export default function MapClient() {
     const radiusLabelTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [viewportHeight, setViewportHeight] = useState('100dvh')
     const [searchValue, setSearchValue] = useState('')
+    const [mounted, setMounted] = useState(false)
 
     const handleSearch = async (query: string) => {
         if (!query.trim() || !map.current) return
@@ -119,6 +120,7 @@ export default function MapClient() {
 
     const handleAreaSummary = async () => {
         if (!radiusCentreRef.current) return
+        setSelectedApp(null)
         setAreaSummaryLoading(true)
         setAreaSummary(null)
 
@@ -146,6 +148,7 @@ export default function MapClient() {
     }
 
     useEffect(() => {
+        setMounted(true)
         if (map.current || !mapContainer.current) return
 
         const updateHeight = () => {
@@ -166,12 +169,10 @@ export default function MapClient() {
         const addPins = async () => {
             if (!map.current) return
 
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('applications')
                 .select('*')
                 .not('latitude', 'is', null)
-
-            console.log('data:', data, 'error:', error)
 
             if (!data || data.length === 0) return
 
@@ -184,12 +185,16 @@ export default function MapClient() {
                 el.style.cursor = 'pointer'
                 el.style.border = '2px solid white'
                 el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'
+                el.style.display = 'none'
 
                 new mapboxgl.Marker({ element: el })
                     .setLngLat([app.longitude, app.latitude])
                     .addTo(map.current!)
 
-                el.addEventListener('click', () => setSelectedApp(app))
+                el.addEventListener('click', () => {
+                    setAreaSummary(null)
+                    setSelectedApp(app)
+                })
             })
 
             const bounds = new mapboxgl.LngLatBounds()
@@ -201,6 +206,18 @@ export default function MapClient() {
 
         return () => window.removeEventListener('resize', updateHeight)
     }, [])
+
+    // Show pins only after search
+    useEffect(() => {
+        if (!map.current) return
+        const markers = document.querySelectorAll('.mapboxgl-marker')
+        markers.forEach((marker) => {
+            (marker as HTMLElement).style.display = radiusCentre ? 'block' : 'none'
+        })
+    }, [radiusCentre])
+
+    const cardVisible = selectedApp !== null
+    const summaryVisible = areaSummary !== null || areaSummaryLoading
 
     return (
         <div style={{
@@ -216,7 +233,6 @@ export default function MapClient() {
                 left: 16, right: 16, zIndex: 10,
                 display: 'flex', gap: 8, alignItems: 'center'
             }}>
-                {/* Search input */}
                 <div style={{
                     flex: 1, background: 'white', borderRadius: 12, padding: '12px 16px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex',
@@ -224,15 +240,14 @@ export default function MapClient() {
                 }}>
                     <SearchIcon style={{ color: '#2D2D2D' }} />
                     <input
-                        id="search-input"
                         placeholder="Search an address..."
                         value={searchValue}
                         onChange={(e) => setSearchValue(e.target.value)}
                         style={{ border: 'none', outline: 'none', fontSize: 16, width: '100%', color: '#2D2D2D' }}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                                handleSearch(searchValue)
-                                    ; (e.target as HTMLInputElement).blur()
+                                handleSearch(searchValue);
+                                (e.target as HTMLInputElement).blur()
                             }
                         }}
                     />
@@ -242,6 +257,7 @@ export default function MapClient() {
                                 setSearchValue('')
                                 setRadiusCentre(null)
                                 setAreaSummary(null)
+                                setSelectedApp(null)
                                 if (map.current?.getSource('radius-circle')) {
                                     (map.current.getSource('radius-circle') as mapboxgl.GeoJSONSource).setData({
                                         type: 'FeatureCollection',
@@ -258,26 +274,42 @@ export default function MapClient() {
                 </div>
             </div>
 
+            {/* Overlay */}
+            {mounted && (cardVisible || summaryVisible) && (
+                <div
+                    onClick={() => {
+                        setSelectedApp(null)
+                        setAreaSummary(null)
+                        setAreaSummaryLoading(false)
+                    }}
+                    style={{
+                        position: 'absolute', inset: 0, zIndex: 9,
+                        background: 'rgba(0,0,0,0.2)'
+                    }}
+                />
+            )}
+
             {/* Map */}
             <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
             {/* Application summary card */}
-            {selectedApp && (
-                <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
-                    background: 'white', borderRadius: '16px 16px 0 0',
-                    padding: 24, maxHeight: '50vh', overflowY: 'auto',
-                    boxShadow: '0 -2px 12px rgba(0,0,0,0.15)'
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                        <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Planning Application</strong>
-                        <button onClick={() => setSelectedApp(null)}
-                            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
-                    </div>
-                    <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>{selectedApp.ref} · {selectedApp.address}</p>
-                    <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D' }}>{stripMarkdown(selectedApp.summary)}</p>
+            <div suppressHydrationWarning style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                zIndex: cardVisible ? 11 : -1,
+                background: 'white', borderRadius: '16px 16px 0 0',
+                padding: 24, maxHeight: '50vh', overflowY: 'auto',
+                boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
+                transform: cardVisible ? 'translateY(0)' : 'translateY(100%)',
+                transition: 'transform 300ms ease'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                    <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Planning Application</strong>
+                    <button onClick={() => setSelectedApp(null)}
+                        style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
                 </div>
-            )}
+                <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>{selectedApp?.ref} · {selectedApp?.address}</p>
+                <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D' }}>{stripMarkdown(selectedApp?.summary ?? '')}</p>
+            </div>
 
             {/* Bottom bar */}
             {radiusCentre && (
@@ -286,22 +318,20 @@ export default function MapClient() {
                     transform: 'translateX(-50%)', zIndex: 10,
                     display: 'flex', alignItems: 'flex-end', gap: 12
                 }}>
-                    {/* Summarise button */}
                     <button
                         onClick={handleAreaSummary}
                         style={{
-                            background: 'white', border: 'none', cursor: 'pointer',
+                            background: '#3B6FE0', border: 'none', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', gap: 8,
                             padding: '12px 20px', borderRadius: 24, height: 48,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                            fontSize: 15, fontWeight: 600, color: '#3B6FE0'
+                            fontSize: 15, fontWeight: 600, color: 'white'
                         }}
                     >
-                        <SummarizeOutlinedIcon style={{ color: '#3B6FE0', fontSize: 20 }} />
+                        <SummarizeOutlinedIcon style={{ color: 'white', fontSize: 20 }} />
                         Summarise
                     </button>
 
-                    {/* Radius control */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                         <div suppressHydrationWarning style={{
                             background: 'white', borderRadius: 8, padding: '4px 10px',
@@ -314,19 +344,19 @@ export default function MapClient() {
                             <div style={{ fontSize: 13, fontWeight: 700, color: '#3B6FE0' }}>{(radiusKm * 1000).toFixed(0)}m</div>
                         </div>
                         <div style={{
-                            background: 'white', borderRadius: 24, padding: '12px 16px',
+                            background: '#3B6FE0', borderRadius: 24, padding: '12px 16px',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.2)', display: 'flex',
                             alignItems: 'center', gap: 8, height: 48, boxSizing: 'border-box' as const
                         }}>
                             <button onClick={() => adjustRadius(-0.1)} style={{
                                 background: 'none', border: 'none', cursor: 'pointer',
-                                fontSize: 20, fontWeight: 700, color: '#3B6FE0',
+                                fontSize: 20, fontWeight: 700, color: 'white',
                                 padding: '0 4px', lineHeight: 1
                             }}>−</button>
-                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3B6FE0' }}>Radius</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Radius</span>
                             <button onClick={() => adjustRadius(0.1)} style={{
                                 background: 'none', border: 'none', cursor: 'pointer',
-                                fontSize: 20, fontWeight: 700, color: '#3B6FE0',
+                                fontSize: 20, fontWeight: 700, color: 'white',
                                 padding: '0 4px', lineHeight: 1
                             }}>+</button>
                         </div>
@@ -335,23 +365,24 @@ export default function MapClient() {
             )}
 
             {/* Area summary card */}
-            {(areaSummary || areaSummaryLoading) && (
-                <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
-                    background: 'white', borderRadius: '16px 16px 0 0',
-                    padding: 24, maxHeight: '50vh', overflowY: 'auto',
-                    boxShadow: '0 -2px 12px rgba(0,0,0,0.15)'
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                        <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Area Summary</strong>
-                        <button onClick={() => setAreaSummary(null)}
-                            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
-                    </div>
-                    {areaSummaryLoading
-                        ? <p style={{ color: '#666', fontSize: 15 }}>Analysing your area...</p>
-                        : <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D', whiteSpace: 'pre-wrap' }}>{stripMarkdown(areaSummary ?? '')}</p>}
+            <div suppressHydrationWarning style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                zIndex: summaryVisible ? 11 : -1,
+                background: 'white', borderRadius: '16px 16px 0 0',
+                padding: 24, maxHeight: '50vh', overflowY: 'auto',
+                boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
+                transform: summaryVisible ? 'translateY(0)' : 'translateY(100%)',
+                transition: 'transform 300ms ease'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                    <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Area Summary</strong>
+                    <button onClick={() => { setAreaSummary(null); setAreaSummaryLoading(false) }}
+                        style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
                 </div>
-            )}
+                {areaSummaryLoading
+                    ? <p style={{ color: '#666', fontSize: 15 }}>Analysing your area...</p>
+                    : <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D', whiteSpace: 'pre-wrap' }}>{stripMarkdown(areaSummary ?? '')}</p>}
+            </div>
 
         </div>
     )
