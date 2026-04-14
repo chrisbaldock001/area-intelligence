@@ -331,11 +331,13 @@ export default function MapClient() {
             {mounted && (
                 <div suppressHydrationWarning style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,
-                    zIndex: cardVisible ? 11 : -1,
+                    zIndex: 11,
                     background: 'white', borderRadius: '16px 16px 0 0',
                     padding: 24, maxHeight: '50vh', overflowY: 'auto',
                     boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
                     transform: cardVisible ? 'translateY(0)' : 'translateY(100%)',
+                    transition: 'transform 300ms ease',
+                    pointerEvents: cardVisible ? 'auto' : 'none'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                         <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Planning Application</strong>
