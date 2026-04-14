@@ -66,6 +66,7 @@ export default function MapClient() {
     const [searchValue, setSearchValue] = useState('')
     const [mounted, setMounted] = useState(false)
     const [showIntro, setShowIntro] = useState(false)
+    const markersRef = useRef<mapboxgl.Marker[]>([])
 
     const handleSearch = async (query: string) => {
         if (!query.trim() || !map.current) return
@@ -159,14 +160,6 @@ export default function MapClient() {
         updateHeight()
         window.addEventListener('resize', updateHeight)
 
-        window.addEventListener('error', (e) => {
-            alert('Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno)
-        })
-
-        window.addEventListener('unhandledrejection', (e) => {
-            alert('Unhandled promise rejection: ' + e.reason)
-        })
-
         map.current = new mapboxgl.Map({
             container: mapContainer.current,
             style: 'mapbox://styles/mapbox/light-v11',
@@ -187,24 +180,31 @@ export default function MapClient() {
             if (!data || data.length === 0) return
 
             data.forEach((app: Application) => {
-                const el = document.createElement('div')
-                el.style.width = '20px'
-                el.style.height = '20px'
-                el.style.borderRadius = '50%'
-                el.style.backgroundColor = '#1a1a1a'
-                el.style.cursor = 'pointer'
-                el.style.border = '2px solid white'
-                el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'
-                el.style.display = 'none'
+                try {
+                    const el = document.createElement('div')
+                    el.style.width = '20px'
+                    el.style.height = '20px'
+                    el.style.borderRadius = '50%'
+                    el.style.backgroundColor = '#1a1a1a'
+                    el.style.cursor = 'pointer'
+                    el.style.border = '2px solid white'
+                    el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'
+                    el.style.display = 'none'
 
-                new mapboxgl.Marker({ element: el })
-                    .setLngLat([app.longitude, app.latitude])
-                    .addTo(map.current!)
+                    const marker = new mapboxgl.Marker({ element: el })
+                        .setLngLat([app.longitude, app.latitude])
+                        .addTo(map.current!)
 
-                el.addEventListener('click', () => {
-                    setAreaSummary(null)
-                    setSelectedApp(app)
-                })
+                    markersRef.current.push(marker)
+
+                    el.addEventListener('click', (e) => {
+                        e.stopPropagation()
+                        setAreaSummary(null)
+                        setSelectedApp(app)
+                    })
+                } catch (err) {
+                    console.warn('Marker error:', err)
+                }
             })
 
             const bounds = new mapboxgl.LngLatBounds()
@@ -214,7 +214,10 @@ export default function MapClient() {
 
         map.current.on('load', addPins)
 
-        return () => window.removeEventListener('resize', updateHeight)
+        return () => {
+            window.removeEventListener('resize', updateHeight)
+            markersRef.current.forEach(m => m.remove())
+        }
     }, [])
 
     // Show pins only after search
