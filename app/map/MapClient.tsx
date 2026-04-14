@@ -221,8 +221,6 @@ export default function MapClient() {
     const cardVisible = selectedApp !== null
     const summaryVisible = areaSummary !== null || areaSummaryLoading
 
-    if (!mounted) return null
-
     return (
         <div style={{
             width: '100vw',
@@ -232,7 +230,7 @@ export default function MapClient() {
         }}>
 
             {/* Intro screen */}
-            {showIntro && (
+            {mounted && showIntro && (
                 <div style={{
                     position: 'absolute', inset: 0, zIndex: 20,
                     background: 'rgba(0,0,0,0.6)',
@@ -330,23 +328,25 @@ export default function MapClient() {
             <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
             {/* Application summary card */}
-            <div suppressHydrationWarning style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                zIndex: cardVisible ? 11 : -1,
-                background: 'white', borderRadius: '16px 16px 0 0',
-                padding: 24, maxHeight: '50vh', overflowY: 'auto',
-                boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
-                transform: cardVisible ? 'translateY(0)' : 'translateY(100%)',
-                transition: 'transform 300ms ease'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                    <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Planning Application</strong>
-                    <button onClick={() => setSelectedApp(null)}
-                        style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
+            {mounted && (
+                <div suppressHydrationWarning style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                    zIndex: cardVisible ? 11 : -1,
+                    background: 'white', borderRadius: '16px 16px 0 0',
+                    padding: 24, maxHeight: '50vh', overflowY: 'auto',
+                    boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
+                    transform: cardVisible ? 'translateY(0)' : 'translateY(100%)',
+                    transition: 'transform 300ms ease'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                        <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Planning Application</strong>
+                        <button onClick={() => setSelectedApp(null)}
+                            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
+                    </div>
+                    <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>{selectedApp?.ref} · {selectedApp?.address}</p>
+                    <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D' }}>{stripMarkdown(selectedApp?.summary ?? '')}</p>
                 </div>
-                <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>{selectedApp?.ref} · {selectedApp?.address}</p>
-                <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D' }}>{stripMarkdown(selectedApp?.summary ?? '')}</p>
-            </div>
+            )}
 
             {/* Bottom bar */}
             {radiusCentre && (
@@ -402,24 +402,26 @@ export default function MapClient() {
             )}
 
             {/* Area summary card */}
-            <div suppressHydrationWarning style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                zIndex: summaryVisible ? 11 : -1,
-                background: 'white', borderRadius: '16px 16px 0 0',
-                padding: 24, maxHeight: '50vh', overflowY: 'auto',
-                boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
-                transform: summaryVisible ? 'translateY(0)' : 'translateY(100%)',
-                transition: 'transform 300ms ease'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                    <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Area Summary</strong>
-                    <button onClick={() => { setAreaSummary(null); setAreaSummaryLoading(false) }}
-                        style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
+            {mounted && (
+                <div suppressHydrationWarning style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                    zIndex: summaryVisible ? 11 : -1,
+                    background: 'white', borderRadius: '16px 16px 0 0',
+                    padding: 24, maxHeight: '50vh', overflowY: 'auto',
+                    boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
+                    transform: summaryVisible ? 'translateY(0)' : 'translateY(100%)',
+                    transition: 'transform 300ms ease'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                        <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Area Summary</strong>
+                        <button onClick={() => { setAreaSummary(null); setAreaSummaryLoading(false) }}
+                            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
+                    </div>
+                    {areaSummaryLoading
+                        ? <p style={{ color: '#666', fontSize: 15 }}>Analysing your area...</p>
+                        : <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D', whiteSpace: 'pre-wrap' }}>{stripMarkdown(areaSummary ?? '')}</p>}
                 </div>
-                {areaSummaryLoading
-                    ? <p style={{ color: '#666', fontSize: 15 }}>Analysing your area...</p>
-                    : <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D', whiteSpace: 'pre-wrap' }}>{stripMarkdown(areaSummary ?? '')}</p>}
-            </div>
+            )}
 
         </div>
     )
