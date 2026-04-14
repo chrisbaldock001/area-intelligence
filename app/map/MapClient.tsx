@@ -167,6 +167,10 @@ export default function MapClient() {
             zoom: 13
         })
 
+        map.current.on('error', (e) => {
+            console.warn('Mapbox error:', e.error)
+        })
+
         map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
         const addPins = async () => {
