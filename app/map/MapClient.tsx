@@ -159,6 +159,14 @@ export default function MapClient() {
         updateHeight()
         window.addEventListener('resize', updateHeight)
 
+        window.addEventListener('error', (e) => {
+            alert('Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno)
+        })
+
+        window.addEventListener('unhandledrejection', (e) => {
+            alert('Unhandled promise rejection: ' + e.reason)
+        })
+
         map.current = new mapboxgl.Map({
             container: mapContainer.current,
             style: 'mapbox://styles/mapbox/light-v11',
@@ -336,7 +344,6 @@ export default function MapClient() {
                     padding: 24, maxHeight: '50vh', overflowY: 'auto',
                     boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
                     transform: cardVisible ? 'translateY(0)' : 'translateY(100%)',
-                    transition: 'transform 300ms ease',
                     pointerEvents: cardVisible ? 'auto' : 'none'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
