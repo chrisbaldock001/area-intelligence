@@ -167,8 +167,17 @@ export default function MapClient() {
             zoom: 13
         })
 
-        map.current.on('error', (e) => {
-            console.warn('Mapbox error:', e.error)
+        map.current.getCanvas().addEventListener('webglcontextlost', (e) => {
+            e.preventDefault()
+            console.warn('WebGL context lost')
+        }, false)
+
+        map.current.getCanvas().addEventListener('webglcontextrestored', () => {
+            console.warn('WebGL context restored')
+        }, false)
+
+        map.current.on('error', () => {
+            // Suppress Mapbox errors to prevent page crash
         })
 
         map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
