@@ -65,6 +65,7 @@ export default function MapClient() {
     const [viewportHeight, setViewportHeight] = useState('100dvh')
     const [searchValue, setSearchValue] = useState('')
     const [mounted, setMounted] = useState(false)
+    const [showIntro, setShowIntro] = useState(false)
 
     const handleSearch = async (query: string) => {
         if (!query.trim() || !map.current) return
@@ -148,6 +149,7 @@ export default function MapClient() {
     }
 
     useEffect(() => {
+        setShowIntro(true)
         setMounted(true)
         if (map.current || !mapContainer.current) return
 
@@ -219,6 +221,8 @@ export default function MapClient() {
     const cardVisible = selectedApp !== null
     const summaryVisible = areaSummary !== null || areaSummaryLoading
 
+    if (!mounted) return null
+
     return (
         <div style={{
             width: '100vw',
@@ -226,6 +230,39 @@ export default function MapClient() {
             position: 'relative',
             paddingTop: 'env(safe-area-inset-top)'
         }}>
+
+            {/* Intro screen */}
+            {showIntro && (
+                <div style={{
+                    position: 'absolute', inset: 0, zIndex: 20,
+                    background: 'rgba(0,0,0,0.6)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 24
+                }}>
+                    <div style={{
+                        background: 'white', borderRadius: 20, padding: 32,
+                        maxWidth: 360, width: '100%', textAlign: 'center'
+                    }}>
+                        <div style={{ fontSize: 32, marginBottom: 16 }}>📍</div>
+                        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#2D2D2D', marginBottom: 12 }}>
+                            Area Intelligence
+                        </h2>
+                        <p style={{ fontSize: 15, lineHeight: 1.6, color: '#555', marginBottom: 24 }}>
+                            Search your street to discover what's being planned in your area — in plain English.
+                        </p>
+                        <button
+                            onClick={() => setShowIntro(false)}
+                            style={{
+                                background: '#3B6FE0', color: 'white', border: 'none',
+                                borderRadius: 24, padding: '14px 32px', fontSize: 16,
+                                fontWeight: 600, cursor: 'pointer', width: '100%'
+                            }}
+                        >
+                            Get started
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Top bar */}
             <div style={{
