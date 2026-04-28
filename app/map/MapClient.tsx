@@ -16,6 +16,12 @@ interface Application {
     proposal: string
     status: string
     summary: string
+    summary_data?: {
+        proposed: string
+        where: string
+        impact: string
+        impact_detail: string
+    }
     latitude: number
     longitude: number
 }
@@ -342,7 +348,8 @@ export default function MapClient() {
                     }}
                     style={{
                         position: 'absolute', inset: 0, zIndex: 9,
-                        background: 'rgba(0,0,0,0.2)'
+                        background: 'rgba(0,0,0,0.2)',
+                        touchAction: 'none'
                     }}
                 />
             )}
@@ -366,32 +373,27 @@ export default function MapClient() {
                             style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
                     </div>
                     <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>{selectedApp?.ref} · {selectedApp?.address}</p>
-                    {selectedApp?.summary && selectedApp.summary.includes("What's proposed:") ? (
+                    {selectedApp?.summary_data ? (
                         <div style={{ fontSize: 15, lineHeight: 1.7, color: '#2D2D2D' }}>
-                            {selectedApp.summary.split('\n\n').map((section, i) => {
-                                const lines = section.split('\n')
-                                const heading = lines[0].replace(/\*\*/g, '').replace(':', '')
-                                const body = lines.slice(1).join(' ').replace(/\*\*/g, '')
-                                const isImpact = heading.startsWith('Impact')
-                                const impactLevel = isImpact ? heading.split(' ')[1] : null
-                                const impactColour = impactLevel === 'Low' ? '#22c55e' : impactLevel === 'Medium' ? '#f59e0b' : '#ef4444'
-
-                                return (
-                                    <div key={i} style={{ marginBottom: 12 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                            <strong style={{ fontSize: 13, color: '#888' }}>{isImpact ? 'Impact' : heading}</strong>
-                                            {isImpact && impactLevel && (
-                                                <span style={{
-                                                    background: impactColour, color: 'white',
-                                                    fontSize: 11, fontWeight: 700, padding: '2px 8px',
-                                                    borderRadius: 12
-                                                }}>{impactLevel}</span>
-                                            )}
-                                        </div>
-                                        <p style={{ margin: 0, fontSize: 15 }}>{body}</p>
-                                    </div>
-                                )
-                            })}
+                            <div style={{ marginBottom: 12 }}>
+                                <strong style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 4 }}>What's proposed</strong>
+                                <p style={{ margin: 0 }}>{selectedApp.summary_data.proposed}</p>
+                            </div>
+                            <div style={{ marginBottom: 12 }}>
+                                <strong style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 4 }}>Where</strong>
+                                <p style={{ margin: 0 }}>{selectedApp.summary_data.where}</p>
+                            </div>
+                            <div style={{ marginBottom: 12 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                    <strong style={{ fontSize: 13, color: '#888' }}>Impact</strong>
+                                    <span style={{
+                                        background: selectedApp.summary_data.impact === 'Low' ? '#22c55e' : selectedApp.summary_data.impact === 'Medium' ? '#f59e0b' : '#ef4444',
+                                        color: 'white', fontSize: 11, fontWeight: 700,
+                                        padding: '2px 8px', borderRadius: 12
+                                    }}>{selectedApp.summary_data.impact}</span>
+                                </div>
+                                <p style={{ margin: 0 }}>{selectedApp.summary_data.impact_detail}</p>
+                            </div>
                         </div>
                     ) : (
                         <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D' }}>{stripMarkdown(selectedApp?.summary ?? '')}</p>

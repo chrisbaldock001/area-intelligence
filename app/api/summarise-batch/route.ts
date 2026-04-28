@@ -19,7 +19,7 @@ export async function GET(request: Request) {
             const { data: applications, error } = await supabase
                 .from('applications')
                 .select('id, ref, address, proposal, status')
-                .or('summary.is.null,summary.eq.')
+                .or('summary_data.is.null')
                 .limit(batchSize)
 
             if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -40,12 +40,19 @@ export async function GET(request: Request) {
                             role: 'user',
                             content: `You are helping local residents understand planning applications in plain English.
 
-Summarise this planning application in 2-3 sentences a non-expert would understand. Focus on what is actually happening, where, and what impact it might have on the local area. Avoid jargon.
+                            Return ONLY a JSON object with no additional text, markdown, or code blocks:
 
-Reference: ${app.ref}
-Address: ${app.address}
-Proposal: ${app.proposal}
-Status: ${app.status}`
+                            {
+                            "proposed": "one sentence describing what is being built, changed or removed",
+                            "where": "street name and area in plain terms, no postcode",
+                            "impact": "Low or Medium or High",
+                            "impact_detail": "one sentence explaining why, focused on effect on daily life"
+                            }
+
+                            Reference: ${app.ref}
+                            Address: ${app.address}
+                            Proposal: ${app.proposal}
+                            Status: ${app.status}`
                         }]
                     })
                 })
@@ -53,9 +60,19 @@ Status: ${app.status}`
                 const data = await response.json()
                 const summary = data.content?.[0]?.text ?? ''
 
+                let summaryData = null
+                try {
+                    summaryData = JSON.parse(summary)
+                } catch {
+                    // fallback if AI doesn't return valid JSON
+                }
+
                 await supabase
                     .from('applications')
-                    .update({ summary })
+                    .update({
+                        summary: summaryData ? `${summaryData.proposed} ${summaryData.impact_detail}` : summary,
+                        summary_data: summaryData
+                    })
                     .eq('id', app.id)
 
                 totalProcessed++
@@ -64,7 +81,7 @@ Status: ${app.status}`
             const { count } = await supabase
                 .from('applications')
                 .select('id', { count: 'exact' })
-                .or('summary.is.null,summary.eq.')
+                .or('summary_data.is.null')
 
             remaining = count ?? 0
 
