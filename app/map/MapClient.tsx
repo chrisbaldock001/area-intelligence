@@ -73,6 +73,7 @@ export default function MapClient() {
     const [mounted, setMounted] = useState(false)
     const [showIntro, setShowIntro] = useState(false)
     const markersRef = useRef<mapboxgl.Marker[]>([])
+    const lastSearchedRef = useRef('')
 
     const handleSearch = async (query: string) => {
         if (!query.trim() || !map.current) return
@@ -113,6 +114,7 @@ export default function MapClient() {
                 paint: { 'line-color': '#3B6FE0', 'line-width': 2 }
             })
         }
+        lastSearchedRef.current = query
     }
 
     const adjustRadius = (deltaKm: number) => {
@@ -312,6 +314,13 @@ export default function MapClient() {
                             if (e.key === 'Enter') {
                                 handleSearch(searchValue);
                                 (e.target as HTMLInputElement).blur()
+                            }
+
+                        }}
+                        onBlur={(e) => {
+                            if (e.target.value.trim() && e.target.value !== lastSearchedRef.current) {
+                                handleSearch(e.target.value)
+                                lastSearchedRef.current = e.target.value
                             }
                         }}
                     />
