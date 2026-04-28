@@ -351,15 +351,14 @@ export default function MapClient() {
             <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
             {/* Application summary card */}
-            {mounted && (
-                <div suppressHydrationWarning style={{
+            {mounted && cardVisible && (
+                <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,
                     zIndex: 11,
                     background: 'white', borderRadius: '16px 16px 0 0',
                     padding: 24, maxHeight: '50vh', overflowY: 'auto',
                     boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
-                    transform: cardVisible ? 'translateY(0)' : 'translateY(100%)',
-                    pointerEvents: cardVisible ? 'auto' : 'none'
+                    overscrollBehavior: 'contain'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                         <strong style={{ fontSize: 18, color: '#2D2D2D' }}>Planning Application</strong>
@@ -367,7 +366,36 @@ export default function MapClient() {
                             style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#2D2D2D' }}>✕</button>
                     </div>
                     <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>{selectedApp?.ref} · {selectedApp?.address}</p>
-                    <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D' }}>{stripMarkdown(selectedApp?.summary ?? '')}</p>
+                    {selectedApp?.summary && selectedApp.summary.includes("What's proposed:") ? (
+                        <div style={{ fontSize: 15, lineHeight: 1.7, color: '#2D2D2D' }}>
+                            {selectedApp.summary.split('\n\n').map((section, i) => {
+                                const lines = section.split('\n')
+                                const heading = lines[0].replace(/\*\*/g, '').replace(':', '')
+                                const body = lines.slice(1).join(' ').replace(/\*\*/g, '')
+                                const isImpact = heading.startsWith('Impact')
+                                const impactLevel = isImpact ? heading.split(' ')[1] : null
+                                const impactColour = impactLevel === 'Low' ? '#22c55e' : impactLevel === 'Medium' ? '#f59e0b' : '#ef4444'
+
+                                return (
+                                    <div key={i} style={{ marginBottom: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                            <strong style={{ fontSize: 13, color: '#888' }}>{isImpact ? 'Impact' : heading}</strong>
+                                            {isImpact && impactLevel && (
+                                                <span style={{
+                                                    background: impactColour, color: 'white',
+                                                    fontSize: 11, fontWeight: 700, padding: '2px 8px',
+                                                    borderRadius: 12
+                                                }}>{impactLevel}</span>
+                                            )}
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: 15 }}>{body}</p>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    ) : (
+                        <p style={{ fontSize: 15, lineHeight: 1.6, color: '#2D2D2D' }}>{stripMarkdown(selectedApp?.summary ?? '')}</p>
+                    )}
                 </div>
             )}
 

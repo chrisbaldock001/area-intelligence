@@ -23,12 +23,21 @@ export async function GET() {
                 role: 'user',
                 content: `You are helping local residents understand planning applications in plain English.
 
-Summarise this planning application in 2-3 sentences a non-expert would understand. Focus on what is actually happening, where, and what impact it might have on the local area. Avoid jargon.
+                Return the summary in exactly this format with no additional text:
 
-Reference: ${application.ref}
-Address: ${application.address}
-Proposal: ${application.proposal}
-Status: ${application.status}`
+                What's proposed:
+                [One sentence describing what is being built, changed or removed]
+
+                Where:
+                [Street name and area in plain terms, no postcode]
+
+                Impact: [Low/Medium/High]
+                [One sentence explaining why, focused on effect on daily life in the area]
+
+                Reference: ${application.ref}
+                Address: ${application.address}
+                Proposal: ${application.proposal}
+                Status: ${application.status}`
             }]
         })
     })

@@ -16,7 +16,7 @@ interface ScrapedApplication {
     link: string
 }
 
-async function scrapeWeek(fromDate: Date, toDate: Date): Promise<ScrapedApplication[]> {
+async function scrapePostcode(postcode: string, fromDate: Date, toDate: Date): Promise<ScrapedApplication[]> {
     const browser = await chromium.launch({ headless: true })
     const page = await browser.newPage()
 
@@ -26,13 +26,21 @@ async function scrapeWeek(fromDate: Date, toDate: Date): Promise<ScrapedApplicat
         await page.goto('https://applications.greatercambridgeplanning.org/online-applications/search.do?action=advanced')
         await page.waitForLoadState('networkidle')
         await page.waitForSelector('input[type="submit"][value="Search"]', { timeout: 10000 })
+
         await page.fill('input[name="date(applicationValidatedStart)"]', fmt(fromDate))
         await page.fill('input[name="date(applicationValidatedEnd)"]', fmt(toDate))
+        await page.fill('input[name="searchCriteria.address"]', postcode)
         await page.waitForTimeout(500)
         await page.click('input[type="submit"][value="Search"]')
         await page.waitForLoadState('networkidle')
 
-        // Check if results exist
+        const selectExists = await page.$('select#resultsPerPage')
+        if (selectExists) {
+            await page.selectOption('select#resultsPerPage', '100')
+            await page.click('input[type="submit"][value="Go"]')
+            await page.waitForLoadState('networkidle')
+        }
+
         const hasResults = await page.$('li.searchresult')
         if (!hasResults) {
             await browser.close()
@@ -61,7 +69,7 @@ async function scrapeWeek(fromDate: Date, toDate: Date): Promise<ScrapedApplicat
 
     } catch (err) {
         await browser.close()
-        console.error('Scrape error:', err)
+        console.error(`Scrape error for ${postcode}:`, err)
         return []
     }
 }
@@ -69,22 +77,20 @@ async function scrapeWeek(fromDate: Date, toDate: Date): Promise<ScrapedApplicat
 export async function GET(request: Request) {
     try {
         const url = new URL(request.url)
-        const weeks = parseInt(url.searchParams.get('weeks') ?? '4')
+        const days = parseInt(url.searchParams.get('days') ?? '7')
+        const postcodes = (url.searchParams.get('postcodes') ?? 'CB1,CB2,CB3,CB4,CB5').split(',')
 
         const today = new Date()
+        const fromDate = new Date(today)
+        fromDate.setDate(today.getDate() - days)
+
         let allApplications: ScrapedApplication[] = []
 
-        // Scrape week by week
-        for (let i = 0; i < weeks; i++) {
-            const toDate = new Date(today)
-            toDate.setDate(today.getDate() - (i * 7))
-            const fromDate = new Date(toDate)
-            fromDate.setDate(toDate.getDate() - 7)
-
-            console.log(`Scraping week ${i + 1}: ${fromDate.toLocaleDateString('en-GB')} to ${toDate.toLocaleDateString('en-GB')}`)
-
-            const weekApplications = await scrapeWeek(fromDate, toDate)
-            allApplications = allApplications.concat(weekApplications)
+        for (const postcode of postcodes) {
+            console.log(`Scraping ${postcode}...`)
+            const results = await scrapePostcode(postcode.trim(), fromDate, today)
+            console.log(`${postcode}: ${results.length} results`)
+            allApplications = allApplications.concat(results)
         }
 
         // Deduplicate by ref
@@ -95,37 +101,9 @@ export async function GET(request: Request) {
             return true
         })
 
-        // Summarise and store
-        const results = []
-
+        // Store raw data only — no AI summarisation
+        let stored = 0
         for (const app of unique) {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
-                    'anthropic-version': '2023-06-01'
-                },
-                body: JSON.stringify({
-                    model: 'claude-opus-4-5',
-                    max_tokens: 300,
-                    messages: [{
-                        role: 'user',
-                        content: `You are helping local residents understand planning applications in plain English.
-
-Summarise this planning application in 2-3 sentences a non-expert would understand. Focus on what is actually happening, where, and what impact it might have on the local area. Avoid jargon.
-
-Reference: ${app.ref}
-Address: ${app.address}
-Proposal: ${app.proposal}
-Status: ${app.status}`
-                    }]
-                })
-            })
-
-            const data = await response.json()
-            const summary = data.content?.[0]?.text ?? ''
-
             const { error } = await supabase
                 .from('applications')
                 .upsert({
@@ -135,20 +113,19 @@ Status: ${app.status}`
                     status: app.status,
                     validated: app.validated,
                     link: app.link,
-                    summary,
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'ref' })
 
-            results.push({
-                ref: app.ref,
-                address: app.address,
-                summary,
-                stored: !error,
-                error: error?.message
-            })
+            if (!error) stored++
         }
 
-        return NextResponse.json({ weeks, scraped: allApplications.length, unique: unique.length, stored: results.length, results })
+        return NextResponse.json({
+            postcodes,
+            days,
+            scraped: allApplications.length,
+            unique: unique.length,
+            stored
+        })
 
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
